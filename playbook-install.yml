@@ -1,0 +1,27 @@
+---
+- name: install packages for all machines
+  sudo: yes
+  hosts: all
+  vars:
+    rpm:            "/vagrant/packages"
+    jdk:            "jdk-8u111-linux-x64.rpm"
+    vim_common:     "vim-common-7.4.160-1.el7.x86_64.rpm"
+    vim_filesystem: "vim-filesystem-7.4.160-1.el7.x86_64.rpm"
+    vim_enhanced:   "vim-enhanced-7.4.160-1.el7.x86_64.rpm"
+    mc:             "mc-4.8.7-8.el7.x86_64.rpm"
+    htop:           "htop-2.0.2-1.el7.x86_64.rpm"
+    net_tools:      "net-tools-2.0-0.17.20131004git.el7.x86_64.rpm"
+
+  tasks:
+  - name: install packages
+    yum: name="{{rpm}}/{{item}}" state=present
+    with_items:
+      - "{{jdk}}"
+      - "{{vim_filesystem}}"
+      - "{{vim_common}}"
+      - "{{vim_enhanced}}"
+      - "{{mc}}"
+      - "{{htop}}"
+      - "{{net_tools}}"
+
+  - unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt owner=root
