@@ -3,25 +3,80 @@
   sudo: yes
   hosts: all
   vars:
-    rpm:            "/vagrant/packages"
     jdk:            "jdk-8u111-linux-x64.rpm"
     vim_common:     "vim-common-7.4.160-1.el7.x86_64.rpm"
     vim_filesystem: "vim-filesystem-7.4.160-1.el7.x86_64.rpm"
     vim_enhanced:   "vim-enhanced-7.4.160-1.el7.x86_64.rpm"
     mc:             "mc-4.8.7-8.el7.x86_64.rpm"
-    htop:           "htop-2.0.2-1.el7.x86_64.rpm"
-    net_tools:      "net-tools-2.0-0.17.20131004git.el7.x86_64.rpm"
 
   tasks:
   - name: install packages
-    yum: name="{{rpm}}/{{item}}" state=present
+    yum: name="/vagrant/packages/{{item}}" state=present
     with_items:
       - "{{jdk}}"
       - "{{vim_filesystem}}"
       - "{{vim_common}}"
       - "{{vim_enhanced}}"
       - "{{mc}}"
-      - "{{htop}}"
-      - "{{net_tools}}"
 
-  - unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt owner=root
+  - group: name=kafka state=present
+
+  - user: name=kafka groups=kafka,wheel
+
+  - unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt owner=kafka
+  
+  - file: path=/opt/zookeeper/data1 state=directory group=kafka owner=kafka mode=0644
+
+  - shell: echo "1" > /opt/zookeeper/data1/myid
+
+  - file: path=/opt/zookeeper/data1/myid group=kafka owner=kafka mode=0644
+
+  - copy: src=/vagrant/zookeeper1.properties dest=/opt/zookeeper/zookeeper1.properties group=kafka owner=kafka mode=0644
+
+  - selinux: state=disabled
+
+  - firewalld: port="{{item}}/tcp" permanent=true state=enabled
+    with_items:
+      - 2888
+      - 3888
+      - 2181      
+
+- name: for host = 192.168.11.10
+  sudo: yes
+  hosts: 192.168.11.10
+  tasks:
+    - file: path=/opt/zookeeper/data{{item}} state=directory group=kafka owner=kafka mode=0644
+      with_items:
+        - 2
+        - 3
+        - 4    
+
+    - file: path=/opt/zookeeper/data{{item}}/myid state=touch group=kafka owner=kafka mode=0644          
+      with_items:
+        - 2
+        - 3
+        - 4      
+
+    - shell: echo "{{item}}" > /opt/zookeeper/data{{item}}/myid      
+      with_items:  
+        - 2
+        - 3
+        - 4   
+
+    - copy: src=/vagrant/zookeeper{{item}}.properties dest=/opt/zookeeper/zookeeper{{item}}.properties owner=kafka mode=0644
+      with_items:
+        - 2
+        - 3
+        - 4
+
+    - firewalld: port="{{item}}/tcp" permanent=true state=enabled
+      with_items:
+        - 2889
+        - 3889
+        - 2890
+        - 3890
+        - 2891
+        - 3891
+        - 2182
+        - 2183
+        - 2184        

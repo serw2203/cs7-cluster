@@ -1,6 +1,8 @@
 # cs7-cluster
 vagrant, centos 7.2, ansible
 
+vagrant plugin install vagrant-vbguest
+
 hypervisor - Virtual Box
 NetWork - NAT (CIDR-10.0.2.0/24, DHCP -enable), HostOnly (Ipv4 - 10.0.3.1, Ipv4 mask - 255.255.255.0, enable DHCP, DHCP server - 10.0.3.2, DHCP server mask -255.255.255.0, DHCP low IP - 10.0.3.15, DHCP high IP - 10.0.3.254)
 
