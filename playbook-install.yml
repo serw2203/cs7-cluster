@@ -1,5 +1,5 @@
 ---
-- name: install packages for all machines
+- name: for all hosts
   sudo: yes
   hosts: all
   vars:
@@ -23,15 +23,17 @@
 
   - user: name=kafka groups=kafka,wheel
 
-  - unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt owner=kafka
-  
-  - file: path=/opt/zookeeper/data1 state=directory group=kafka owner=kafka mode=0644
+  - unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt group=kafka owner=kafka
+
+  - file: path=/opt/zookeeper state=directory group=kafka owner=kafka mode=0744
+
+  - file: path=/opt/zookeeper/data1 state=directory group=kafka owner=kafka mode=0744
 
   - shell: echo "1" > /opt/zookeeper/data1/myid
 
-  - file: path=/opt/zookeeper/data1/myid group=kafka owner=kafka mode=0644
+  - file: path=/opt/zookeeper/data1/myid group=kafka owner=kafka mode=0744
 
-  - copy: src=/vagrant/zookeeper1.properties dest=/opt/zookeeper/zookeeper1.properties group=kafka owner=kafka mode=0644
+  - copy: src=/vagrant/zookeeper1.properties dest=/opt/zookeeper/zookeeper1.properties group=kafka owner=kafka mode=0744
 
   - selinux: state=disabled
 
@@ -39,31 +41,31 @@
     with_items:
       - 2888
       - 3888
-      - 2181      
+      - 2181
 
 - name: for host = 192.168.11.10
   sudo: yes
   hosts: 192.168.11.10
   tasks:
-    - file: path=/opt/zookeeper/data{{item}} state=directory group=kafka owner=kafka mode=0644
+    - file: path=/opt/zookeeper/data{{item}} state=directory group=kafka owner=kafka mode=0744
       with_items:
         - 2
         - 3
-        - 4    
+        - 4
 
-    - file: path=/opt/zookeeper/data{{item}}/myid state=touch group=kafka owner=kafka mode=0644          
+    - file: path=/opt/zookeeper/data{{item}}/myid state=touch group=kafka owner=kafka mode=0744
       with_items:
         - 2
         - 3
-        - 4      
+        - 4
 
-    - shell: echo "{{item}}" > /opt/zookeeper/data{{item}}/myid      
-      with_items:  
+    - shell: echo "{{item}}" > /opt/zookeeper/data{{item}}/myid
+      with_items:
         - 2
         - 3
-        - 4   
+        - 4
 
-    - copy: src=/vagrant/zookeeper{{item}}.properties dest=/opt/zookeeper/zookeeper{{item}}.properties owner=kafka mode=0644
+    - copy: src=/vagrant/zookeeper{{item}}.properties dest=/opt/zookeeper/zookeeper{{item}}.properties owner=kafka mode=0744
       with_items:
         - 2
         - 3
@@ -79,4 +81,4 @@
         - 3891
         - 2182
         - 2183
-        - 2184        
+        - 2184
