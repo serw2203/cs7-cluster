@@ -40,13 +40,10 @@ Vagrant.configure("2") do |config|
                 echo "export JAVA_HOME=/usr/java/latest" >>/etc/profile
                 echo "export KAFKA_HOME=/opt/kafka_2.11-0.10.1.0" >>/etc/profile
                 echo "export PATH=\$PATH:\$JAVA_HOME/bin" >>/etc/profile
-                systemctl restart network.service
             SHELL
-
 
             nodeconfig.vm.provision :shell, :run => "always", inline: <<-SHELL
                 systemctl restart network.service
-                systemctl restart firewalld.service
             SHELL
 
         end

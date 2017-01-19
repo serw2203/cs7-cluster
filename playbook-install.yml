@@ -19,59 +19,148 @@
       - "{{vim_enhanced}}"
       - "{{mc}}"
 
-  - group: name=kafka state=present
+  - name: create kafka group
+    group: name=kafka state=present
 
-  - user: name=kafka groups=kafka,wheel
+  - name: create kafka user
+    user: name=kafka groups=kafka,wheel generate_ssh_key=yes ssh_key_bits=2048 ssh_key_file=ssh/id_rsa
 
-  - unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt group=kafka owner=kafka
+  - name: extract kafka from distrib
+    unarchive: src=/vagrant/packages/kafka_2.11-0.10.1.0.tgz dest=/opt group=kafka owner=kafka
 
-  - file: path=/opt/zookeeper state=directory group=kafka owner=kafka mode=0744
+  - name: set reqursive owner=kafka for KAFKA_HOME
+    file: dest=/opt/kafka_2.11-0.10.1.0 owner=kafka group=kafka mode=0754 recurse=yes
 
-  - file: path=/opt/zookeeper/data1 state=directory group=kafka owner=kafka mode=0744
+  - name: start and enable firewall
+    service:
+      name: firewalld
+      state: started
+      enabled: yes
 
-  - shell: echo "1" > /opt/zookeeper/data1/myid
+  - name: disable selinux
+    selinux: state=disabled
 
-  - file: path=/opt/zookeeper/data1/myid group=kafka owner=kafka mode=0744
-
-  - copy: src=/vagrant/zookeeper1.properties dest=/opt/zookeeper/zookeeper1.properties group=kafka owner=kafka mode=0744
-
-  - selinux: state=disabled
-
-  - firewalld: port="{{item}}/tcp" permanent=true state=enabled
+  - name: open common ports in firewall for zookeeper
+    firewalld: port="{{item}}/tcp" permanent=true state=enabled
     with_items:
       - 2888
       - 3888
       - 2181
 
+  - name: delete folder '/opt/zookeeper' if exist
+    file: path=/opt/zookeeper state=absent
+
+  - name: make folder '/opt/zookeeper'
+    file: path=/opt/zookeeper state=directory group=kafka owner=kafka mode=0744
+
+- name: for host = 192.168.11.12
+  sudo: yes
+  hosts: [local]
+  tasks:
+    - name: make folder '/opt/zookeeper/data1'
+      file: path=/opt/zookeeper/data1 state=directory group=kafka owner=kafka mode=0744
+
+    - name: make file '/opt/zookeeper/data1/myid'
+      file: path=/opt/zookeeper/data1/myid state=touch group=kafka owner=kafka mode=0744
+
+    - name: add index=6 to '/opt/zookeeper/data1/myid'
+      shell: echo "6" >> /opt/zookeeper/data1/myid
+
+    - name: copy file 'vagrant/zookeeper1.properties' to '/opt/zookeeper/zookeeper1.properties'
+      copy: src=/vagrant/zookeeper1.properties dest=/opt/zookeeper/zookeeper1.properties owner=kafka mode=0744
+
+    - name: add server's description to '/opt/zookeeper/zookeeper1.properties'
+      shell: echo "server.{{item.index}}={{item.value}}" >> /opt/zookeeper/zookeeper1.properties
+      with_items:
+        - {index: "1", value: "192.168.11.10:2888:3888"}
+        - {index: "2", value: "192.168.11.10:2889:3889"}
+        - {index: "3", value: "192.168.11.10:2890:3890"}
+        - {index: "4", value: "192.168.11.10:2891:3891"}
+        - {index: "5", value: "192.168.11.11:2888:3888"}
+        - {index: "6", value: "0.0.0.0:2888:3888"}
+
+    - name: register service zookeeper1.service
+      copy: src=/vagrant/zookeeper1.service dest=/etc/systemd/system/zookeeper1.service owner=kafka mode=0644
+
+    - name: enable zookeeper1.service
+      systemd: name=zookeeper1.service state=started enabled=true daemon_reload=yes
+
+- name: for host = 192.168.11.11
+  sudo: yes
+  hosts: 192.168.11.11
+  tasks:
+    - name: make folder '/opt/zookeeper/data1'
+      file: path=/opt/zookeeper/data1 state=directory group=kafka owner=kafka mode=0744
+
+    - name: make file '/opt/zookeeper/data1/myid'
+      file: path=/opt/zookeeper/data1/myid state=touch group=kafka owner=kafka mode=0744
+
+    - name: add index=5 to '/opt/zookeeper/data1/myid'
+      shell: echo "5" >> /opt/zookeeper/data1/myid
+
+    - name: copy file 'vagrant/zookeeper1.properties' to '/opt/zookeeper/zookeeper1.properties'
+      copy: src=/vagrant/zookeeper1.properties dest=/opt/zookeeper/zookeeper1.properties owner=kafka mode=0744
+
+    - name: add server's description to '/opt/zookeeper/zookeeper1.properties'
+      shell: echo "server.{{item.index}}={{item.value}}" >> /opt/zookeeper/zookeeper1.properties
+      with_items:
+        - {index: "1", value: "192.168.11.10:2888:3888"}
+        - {index: "2", value: "192.168.11.10:2889:3889"}
+        - {index: "3", value: "192.168.11.10:2890:3890"}
+        - {index: "4", value: "192.168.11.10:2891:3891"}
+        - {index: "5", value: "0.0.0.0:2888:3888"}
+        - {index: "6", value: "192.168.11.12:2888:3888"}
+
+    - name: register service zookeeper1.service
+      copy: src=/vagrant/zookeeper1.service dest=/etc/systemd/system/zookeeper1.service owner=kafka mode=0644
+
+    - name: enable zookeeper1.service
+      systemd: name=zookeeper1.service state=started enabled=true daemon_reload=yes
+
 - name: for host = 192.168.11.10
   sudo: yes
   hosts: 192.168.11.10
   tasks:
-    - file: path=/opt/zookeeper/data{{item}} state=directory group=kafka owner=kafka mode=0744
+    - name: make folders '/opt/zookeeper/data1', '/opt/zookeeper/data2', '/opt/zookeeper/data3', '/opt/zookeeper/data4'
+      file: path=/opt/zookeeper/data{{item}} state=directory group=kafka owner=kafka mode=0744
       with_items:
+        - 1
         - 2
         - 3
         - 4
 
-    - file: path=/opt/zookeeper/data{{item}}/myid state=touch group=kafka owner=kafka mode=0744
+    - name: make files '/opt/zookeeper/data1/myid', '/opt/zookeeper/data2/myid', '/opt/zookeeper/data3/myid', '/opt/zookeeper/data4/myid'
+      file: path=/opt/zookeeper/data{{item}}/myid state=touch group=kafka owner=kafka mode=0744
       with_items:
+        - 1
         - 2
         - 3
         - 4
 
-    - shell: echo "{{item}}" > /opt/zookeeper/data{{item}}/myid
+    - name: add index={item} to '/opt/zookeeper/data{item}/myid'
+      shell: echo "{{item}}" > /opt/zookeeper/data{{item}}/myid
       with_items:
+        - 1
         - 2
         - 3
         - 4
 
-    - copy: src=/vagrant/zookeeper{{item}}.properties dest=/opt/zookeeper/zookeeper{{item}}.properties owner=kafka mode=0744
+    - name: copy files 'vagrant/zookeeper{item}.properties' to '/opt/zookeeper/zookeeper{item}.properties'
+      copy: src=/vagrant/zookeeper{{item}}.properties dest=/opt/zookeeper/zookeeper{{item}}.properties owner=kafka mode=0744
       with_items:
+        - 1
         - 2
         - 3
         - 4
 
-    - firewalld: port="{{item}}/tcp" permanent=true state=enabled
+    - name: add server's description to '/opt/zookeeper/zookeeper{item}.properties'
+      shell: echo "server.{{item[1].index}}={{item[1].value}}" >> /opt/zookeeper/zookeeper{{item[0]}}.properties
+      with_nested:
+        - [1, 2, 3, 4]
+        - [{index: "1", value: "0.0.0.0:2888:3888"}, {index: "2", value: "0.0.0.0:2889:3889"}, {index: "3", value: "0.0.0.0:2890:3890"}, {index: "4", value: "0.0.0.0:2891:3891"}, {index: "5", value: "192.168.11.11:2888:3888"}, {index: "6", value: "192.168.11.12:2888:3888"}]
+
+    - name: open additional ports in firewall for zookeeper
+      firewalld: port="{{item}}/tcp" permanent=true state=enabled
       with_items:
         - 2889
         - 3889
@@ -82,3 +171,19 @@
         - 2182
         - 2183
         - 2184
+
+    - name: register service zookeeper{{item}}.service
+      copy: src=/vagrant/zookeeper{{item}}.service dest=/etc/systemd/system/zookeeper{{item}}.service owner=kafka mode=0644
+      with_items:
+        - 1
+        - 2
+        - 3
+        - 4
+
+    - name: enable zookeeper{{item}}.service
+      systemd: name=zookeeper{{item}}.service state=started enabled=true daemon_reload=yes
+      with_items:
+        - 1
+        - 2
+        - 3
+        - 4

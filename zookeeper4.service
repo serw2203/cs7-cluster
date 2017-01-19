@@ -1,0 +1,16 @@
+[Unit]
+Description=Apache Zookeeper Server (4)
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target
+
+[Service]
+Type=simple
+PIDFile=/opt/zookeeper/zookeeper4.service.pid
+User=kafka
+Group=kafka
+Environment=JAVA_HOME=/usr/java/latest
+ExecStart=/opt/kafka_2.11-0.10.1.0/bin/zookeeper-server-start.sh /opt/zookeeper/zookeeper4.properties
+ExecStop=/opt/kafka_2.11-0.10.1.0/bin/zookeeper-server-stop.sh
+
+[Install]
+WantedBy=multi-user.target
